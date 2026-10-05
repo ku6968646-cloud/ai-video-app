@@ -28,7 +28,15 @@ jobs:
       - run: mv pubspec.yaml.bak pubspec.yaml
       - run: mv lib/main.dart.bak lib/main.dart
       
-      # 🌟 Android Manifest ကို ပြင်ဆင်ခြင်း (Gallery ထဲသိမ်းဖို့ Permission များ ထည့်ခြင်း)
+      # 🌟 build.gradle ကို ပြင်ဆင်ခြင်း (Version များ သတ်မှတ်ခြင်း)
+      - name: Patch build.gradle
+        run: |
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
+          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/g' android/app/build.gradle
+          sed -i 's/ndkVersion flutter.ndkVersion/ndkVersion "25.1.8937393"/g' android/app/build.gradle
+      
+      # Android Manifest ကို ပြင်ဆင်ခြင်း
       - name: Patch AndroidManifest.xml
         run: |
           sed -i 's/<application/<application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"/g' android/app/src/main/AndroidManifest.xml
