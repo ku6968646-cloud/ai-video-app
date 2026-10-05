@@ -11,9 +11,10 @@ dependencies:
     sdk: flutter
   http: ^1.1.0
   video_player: ^2.8.1
-  dio: ^5.4.0                  # 🌟 ဒေါင်းလုဒ်အတွက်
-  path_provider: ^2.1.2        # 🌟 ဖုန်း Storage ရှာဖို့
-  permission_handler: ^11.3.0  # 🌟 Permission တောင်းဖို့
+  dio: ^5.4.0
+  path_provider: ^2.1.2
+  permission_handler: ^11.3.0
+  gal: ^2.3.0
   cupertino_icons: ^1.0.2
 
 dev_dependencies:

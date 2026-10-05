@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:gal/gal.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -79,33 +79,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // 🌟 ဒေါင်းလုဒ်ဆွဲသည့် Function
+  // 🌟 ဒေါင်းလုဒ်ဆွဲပြီး Gallery ထဲသိမ်းသည့် Function
   Future<void> _downloadVideo() async {
     if (_videoUrl == null) return;
 
-    var status = await Permission.storage.request();
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Storage permission denied!")),
-      );
-      return;
+    if (Platform.isAndroid) {
+      await Gal.requestAccess();
     }
 
     try {
-      Directory? dir = await getDownloadsDirectory();
-      if (dir == null) {
-        dir = await getExternalStorageDirectory();
-      }
-      String savePath = '${dir!.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
+      Directory tempDir = await getTemporaryDirectory();
+      String tempPath = '${tempDir.path}/temp_video.mp4';
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Downloading...")),
       );
 
-      await Dio().download(_videoUrl!, savePath);
-      
+      await Dio().download(_videoUrl!, tempPath);
+      await Gal.putVideo(tempPath);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Downloaded to: $savePath")),
+        const SnackBar(content: Text("Video saved to Gallery! 🎉")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -227,7 +221,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         aspectRatio: _videoController!.value.aspectRatio,
                         child: VideoPlayer(_videoController!),
                       ),
-                      // Play/Pause ခလုတ်
                       IconButton(
                         icon: Icon(
                           _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
@@ -245,7 +238,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  // ဒေါင်းလုဒ် ခလုတ်
                   ElevatedButton.icon(
                     onPressed: _downloadVideo,
                     icon: const Icon(Icons.download, color: Colors.white),

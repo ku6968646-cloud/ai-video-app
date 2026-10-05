@@ -28,7 +28,7 @@ jobs:
       - run: mv pubspec.yaml.bak pubspec.yaml
       - run: mv lib/main.dart.bak lib/main.dart
       
-      # Android Manifest ကို ပြင်ဆင်ခြင်း (Internet နဲ့ HTTP ခွင့်ပြုချက် ထည့်ခြင်း)
+      # 🌟 Android Manifest ကို ပြင်ဆင်ခြင်း (Gallery ထဲသိမ်းဖို့ Permission များ ထည့်ခြင်း)
       - name: Patch AndroidManifest.xml
         run: |
           sed -i 's/<application/<application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"/g' android/app/src/main/AndroidManifest.xml
