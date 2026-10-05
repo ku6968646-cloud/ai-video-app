@@ -42,7 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _videoUrl;
   VideoPlayerController? _videoController;
 
-  // 🌟 Animation အမျိုးအစားများ
   final Map<String, String> _animations = {
     "zoom_in": "🔍 Zoom In",
     "zoom_out": "🔎 Zoom Out",
@@ -146,12 +145,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_videoUrl == null) return;
 
     try {
-      Directory? dir = await getDownloadsDirectory();
-      if (dir == null) {
-        dir = await getExternalStorageDirectory();
+      Directory downloadDir = Directory('/storage/emulated/0/Download');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
       }
       
-      String savePath = '${dir!.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+      String savePath = '${downloadDir.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Downloading...")),
@@ -160,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await Dio().download(_videoUrl!, savePath);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Saved to: $savePath")),
+        SnackBar(content: Text("✅ Saved to Downloads: $savePath")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -282,7 +281,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Column(
                 children: [
-                  // 🌟 Animation နဲ့ Duration ရွေးချယ်မှု
                   Row(
                     children: [
                       _buildChip(
