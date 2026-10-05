@@ -23,7 +23,7 @@ jobs:
       - run: mv pubspec.yaml.bak pubspec.yaml
       - run: mv lib/main.dart.bak lib/main.dart
       
-      # 🌟 build.gradle ဖိုင်ကို အသစ် အစားထိုးခြင်း (ဒီနည်းလမ်းက အသေချာဆုံးပါ)
+      # 🌟 build.gradle ဖိုင်ကို အသစ် အစားထိုးခြင်း (Kotlin Version ကို တိုက်ရိုက်ထည့်ထားသည်)
       - name: Overwrite build.gradle
         run: |
           cat > android/app/build.gradle << 'EOF'
@@ -89,7 +89,7 @@ jobs:
           }
 
           dependencies {
-              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+              implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
           }
           EOF
       
