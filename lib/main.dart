@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:gal/gal.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -80,32 +79,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _downloadVideo() async {
-    if (_videoUrl == null) return;
+  if (_videoUrl == null) return;
 
-    if (Platform.isAndroid) {
-      await Gal.requestAccess();
+  try {
+    // Downloads Folder ကို ရယူခြင်း
+    Directory? dir = await getDownloadsDirectory();
+    if (dir == null) {
+      dir = await getExternalStorageDirectory();
     }
+    
+    String savePath = '${dir!.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
 
-    try {
-      Directory tempDir = await getTemporaryDirectory();
-      String tempPath = '${tempDir.path}/temp_video.mp4';
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Downloading...")),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Downloading...")),
+    );
 
-      await Dio().download(_videoUrl!, tempPath);
-      await Gal.putVideo(tempPath);
+    await Dio().download(_videoUrl!, savePath);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Video saved to Gallery! 🎉")),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Download failed: $e")),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Downloaded to: $savePath")),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Download failed: $e")),
+    );
   }
+}
 
   @override
   void dispose() {
