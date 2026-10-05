@@ -36,15 +36,25 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _promptController = TextEditingController();
   String _selectedResolution = "720p";
+  String _selectedAnimation = "zoom_in";
+  int _selectedDuration = 5;
   bool _isLoading = false;
   String? _videoUrl;
   VideoPlayerController? _videoController;
 
-  // 🌟 Loading Dialog ကို ပြသည့် Function
+  // 🌟 Animation အမျိုးအစားများ
+  final Map<String, String> _animations = {
+    "zoom_in": "🔍 Zoom In",
+    "zoom_out": "🔎 Zoom Out",
+    "pan_right": "➡️ Pan Right",
+    "pan_left": "⬅️ Pan Left",
+    "rotate": "🔄 Rotate",
+  };
+
   void _showLoadingDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false, // အပြင်ကို နှိပ်လည်း မပိတ်ရဘူး
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.grey[900],
@@ -62,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  "AI က ဗီဒီယိုကို ထုတ်လုပ်နေပါတယ်။\n၁ မိနစ်ကနေ ၅ မိနစ်အထိ ကြာနိုင်ပါတယ်။\nခဏစောင့်ပေးပါ။",
+                  "AI ပုံဖန်တီးပြီး Video ပြောင်းနေပါတယ်။\n၃၀ စက္ကန့်ကနေ ၁ မိနစ်အထိ ကြာနိုင်ပါတယ်။",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 13, color: Colors.grey[400]),
                 ),
@@ -75,21 +85,27 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _generateVideo() async {
+    if (_promptController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Prompt ရိုက်ထည့်ပါ")),
+      );
+      return;
+    }
+
     setState(() { _isLoading = true; });
-    
-    // Loading Popup ကို ဖွင့်လိုက်ပါ
     _showLoadingDialog();
 
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/generate_video'), 
+        Uri.parse('http://127.0.0.1:8000/generate_video'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "prompt": _promptController.text,
           "resolution": _selectedResolution,
-          "duration": 5
+          "animation": _selectedAnimation,
+          "duration": _selectedDuration,
         }),
-      ).timeout(const Duration(minutes: 6)); // ၆ မိနစ်အထိ စောင့်မယ်
+      ).timeout(const Duration(minutes: 3));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -104,21 +120,19 @@ class _HomeScreenState extends State<HomeScreen> {
         
         setState(() { _videoUrl = videoUrl; });
         
-        // Loading Popup ကို ပိတ်လိုက်ပါ
         if (mounted) Navigator.of(context).pop();
         
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Video Generated! 🎉")),
         );
       } else {
-        // Error တက်ရင် Popup ပိတ်
         if (mounted) Navigator.of(context).pop();
+        final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Server Error: ${response.statusCode}")),
+          SnackBar(content: Text("Error: ${error['message'] ?? 'Unknown'}")),
         );
       }
     } catch (e) {
-      // Error တက်ရင် Popup ပိတ်
       if (mounted) Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
@@ -146,13 +160,67 @@ class _HomeScreenState extends State<HomeScreen> {
       await Dio().download(_videoUrl!, savePath);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Downloaded to: $savePath")),
+        SnackBar(content: Text("Saved to: $savePath")),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Download failed: $e")),
       );
     }
+  }
+
+  void _showAnimationPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: _animations.entries.map((entry) {
+            return ListTile(
+              title: Text(entry.value, style: const TextStyle(color: Colors.white)),
+              trailing: _selectedAnimation == entry.key
+                  ? const Icon(Icons.check, color: Colors.orange)
+                  : null,
+              onTap: () {
+                setState(() { _selectedAnimation = entry.key; });
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  void _showDurationPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return ListView(
+          shrinkWrap: true,
+          children: [3, 5, 8, 10, 15].map((sec) {
+            return ListTile(
+              title: Text("$sec seconds", style: const TextStyle(color: Colors.white)),
+              trailing: _selectedDuration == sec
+                  ? const Icon(Icons.check, color: Colors.orange)
+                  : null,
+              onTap: () {
+                setState(() { _selectedDuration = sec; });
+                Navigator.pop(context);
+              },
+            );
+          }).toList(),
+        );
+      },
+    );
   }
 
   @override
@@ -176,7 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
@@ -204,7 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
               "Transform your ideas into captivating videos.",
               style: TextStyle(color: Colors.grey),
             ),
-            const Spacer(),
+            const SizedBox(height: 20),
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -213,17 +282,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Column(
                 children: [
+                  // 🌟 Animation နဲ့ Duration ရွေးချယ်မှု
                   Row(
                     children: [
-                      _buildChip("Vela AI Video"),
+                      _buildChip(
+                        _animations[_selectedAnimation] ?? "Zoom In",
+                        onTap: _showAnimationPicker,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildChip(
+                        "${_selectedDuration}s",
+                        onTap: _showDurationPicker,
+                      ),
                       const SizedBox(width: 8),
                       _buildChip(_selectedResolution, onTap: () {
                         setState(() {
                           _selectedResolution = _selectedResolution == "720p" ? "1080p" : "720p";
                         });
                       }),
-                      const SizedBox(width: 8),
-                      _buildChip("9:16"),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -246,13 +322,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           backgroundColor: Colors.orange,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
-                        child: _isLoading 
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text("Create | AD", style: TextStyle(color: Colors.white)),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text("Create | AD", style: TextStyle(color: Colors.white)),
                       ),
                     ],
                   ),
@@ -260,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             if (_videoController != null && _videoController!.value.isInitialized)
               Column(
                 children: [
@@ -279,9 +355,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         onPressed: () {
                           setState(() {
-                            _videoController!.value.isPlaying 
-                              ? _videoController!.pause() 
-                              : _videoController!.play();
+                            _videoController!.value.isPlaying
+                                ? _videoController!.pause()
+                                : _videoController!.play();
                           });
                         },
                       ),
