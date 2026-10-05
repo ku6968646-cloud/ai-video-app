@@ -28,7 +28,12 @@ jobs:
       - run: mv pubspec.yaml.bak pubspec.yaml
       - run: mv lib/main.dart.bak lib/main.dart
       
-      # Dependencies များရယူပြီး APK ထုတ်ခြင်း
+      # 🌟 Android Manifest ကို ပြင်ဆင်ခြင်း (Internet နဲ့ HTTP ခွင့်ပြုချက် ထည့်ခြင်း)
+      - name: Patch AndroidManifest.xml
+        run: |
+          sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET" \/>' android/app/src/main/AndroidManifest.xml
+      
       - run: flutter pub get
       - run: flutter build apk --release
       
