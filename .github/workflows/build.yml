@@ -21,22 +21,22 @@ jobs:
       - run: mv pubspec.yaml pubspec.yaml.bak
       - run: mv lib/main.dart lib/main.dart.bak
       
-      # Flutter Project ကို ဖန်တီးခြင်း (android folder ရလာမည်)
+      # Flutter Project ကို ဖန်တီးခြင်း
       - run: flutter create --project-name ai_video_app .
       
       # မူရင်းဖိုင်များကို ပြန်လည်ထည့်သွင်းခြင်း
       - run: mv pubspec.yaml.bak pubspec.yaml
       - run: mv lib/main.dart.bak lib/main.dart
       
-      # 🌟 build.gradle ကို ပြင်ဆင်ခြင်း (Version များ သတ်မှတ်ခြင်း)
-      - name: Patch build.gradle
+      # 🌟 Gradle ဖိုင်များကို ပြင်ဆင်ခြင်း (SDK Version များ တိုက်ရိုက်သတ်မှတ်ခြင်း)
+      - name: Patch Gradle Files
         run: |
-          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle
-          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 34/g' android/app/build.gradle
-          sed -i 's/ndkVersion flutter.ndkVersion/ndkVersion "25.1.8937393"/g' android/app/build.gradle
-      
-      # Android Manifest ကို ပြင်ဆင်ခြင်း
+          sed -i 's/flutter.compileSdkVersion/34/g' android/app/build.gradle
+          sed -i 's/flutter.minSdkVersion/21/g' android/app/build.gradle
+          sed -i 's/flutter.targetSdkVersion/34/g' android/app/build.gradle
+          sed -i 's/flutter.ndkVersion/"25.1.8937393"/g' android/app/build.gradle
+          
+      # Android Manifest ကို ပြင်ဆင်ခြင်း (Internet နဲ့ Storage Permission)
       - name: Patch AndroidManifest.xml
         run: |
           sed -i 's/<application/<application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"/g' android/app/src/main/AndroidManifest.xml
