@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:video_player/video_player.dart'; // 🌟 ဒါကို ထည့်ပါ
 import 'dart:convert';
 
 void main() {
@@ -34,12 +35,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedResolution = "720p";
   bool _isLoading = false;
   String? _videoUrl;
+  
+  // 🌟 ဗီဒီယို Player အတွက် ပြောင်းလဲမှုများ
+  VideoPlayerController? _videoController;
 
   Future<void> _generateVideo() async {
     setState(() { _isLoading = true; });
     try {
-      // ⚠️ ဒီနေရာမှာ သင့် Python Server ရဲ့ IP ကို ထည့်ပါ
-      // ဖုန်းတစ်လုံးတည်း Run ရင်: http://127.0.0.1:8000/generate_video
       final response = await http.post(
         Uri.parse('http://127.0.0.1:8000/generate_video'), 
         headers: {"Content-Type": "application/json"},
@@ -52,7 +54,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() { _videoUrl = data['video_url']; });
+        String videoUrl = data['video_url'];
+        
+        // 🌟 ဗီဒီယို URL ရလာရင် Player ကို အသစ်ပြန်ဖန်တီးခြင်း
+        if (_videoController != null) {
+          _videoController!.dispose();
+        }
+        _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+        await _videoController!.initialize();
+        _videoController!.play(); // အလိုအလျောက် ဖွင့်ပြရန်
+        
+        setState(() { _videoUrl = videoUrl; });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Video Generated!")),
         );
@@ -64,6 +76,13 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       setState(() { _isLoading = false; });
     }
+  }
+
+  // 🌟 App ပိတ်ရင် Player ကို ရပ်ရန်
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
   }
 
   @override
@@ -85,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Video / Image Tab
             Container(
               decoration: BoxDecoration(
                 color: Colors.grey[900],
@@ -99,8 +117,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            
-            // Camera Icon
             const Icon(Icons.videocam, size: 80, color: Colors.orange),
             const SizedBox(height: 10),
             const Text(
@@ -113,8 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(color: Colors.grey),
             ),
             const Spacer(),
-
-            // Prompt Box
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -167,12 +181,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             
-            // Preview Area
-            if (_videoUrl != null)
+            // 🌟 Preview Area (ဗီဒီယိုဖွင့်ပြသည့် နေရာ)
+            if (_videoController != null && _videoController!.value.isInitialized)
+              Container(
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: AspectRatio(
+                  aspectRatio: _videoController!.value.aspectRatio,
+                  child: VideoPlayer(_videoController!),
+                ),
+              )
+            else if (_videoUrl != null)
               Container(
                 height: 200,
                 color: Colors.grey[800],
-                child: const Center(child: Text("Video Preview Here")),
+                child: const Center(child: Text("Video Loading...")),
               ),
           ],
         ),
