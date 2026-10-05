@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:video_player/video_player.dart'; // 🌟 ဒါကို ထည့်ပါ
+import 'package:video_player/video_player.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'dart:convert';
+import 'dart:io';
 
 void main() {
   runApp(const MyApp());
@@ -35,8 +39,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _selectedResolution = "720p";
   bool _isLoading = false;
   String? _videoUrl;
-  
-  // 🌟 ဗီဒီယို Player အတွက် ပြောင်းလဲမှုများ
   VideoPlayerController? _videoController;
 
   Future<void> _generateVideo() async {
@@ -56,13 +58,12 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = jsonDecode(response.body);
         String videoUrl = data['video_url'];
         
-        // 🌟 ဗီဒီယို URL ရလာရင် Player ကို အသစ်ပြန်ဖန်တီးခြင်း
         if (_videoController != null) {
           _videoController!.dispose();
         }
         _videoController = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
         await _videoController!.initialize();
-        _videoController!.play(); // အလိုအလျောက် ဖွင့်ပြရန်
+        _videoController!.play();
         
         setState(() { _videoUrl = videoUrl; });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +79,41 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // 🌟 App ပိတ်ရင် Player ကို ရပ်ရန်
+  // 🌟 ဒေါင်းလုဒ်ဆွဲသည့် Function
+  Future<void> _downloadVideo() async {
+    if (_videoUrl == null) return;
+
+    var status = await Permission.storage.request();
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Storage permission denied!")),
+      );
+      return;
+    }
+
+    try {
+      Directory? dir = await getDownloadsDirectory();
+      if (dir == null) {
+        dir = await getExternalStorageDirectory();
+      }
+      String savePath = '${dir!.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Downloading...")),
+      );
+
+      await Dio().download(_videoUrl!, savePath);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Downloaded to: $savePath")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Download failed: $e")),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _videoController?.dispose();
@@ -181,17 +216,46 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             
-            // 🌟 Preview Area (ဗီဒီယိုဖွင့်ပြသည့် နေရာ)
+            // 🌟 Preview Area (ခလုတ်များနှင့် ဒေါင်းလုဒ် ထည့်ထားသည်)
             if (_videoController != null && _videoController!.value.isInitialized)
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: AspectRatio(
-                  aspectRatio: _videoController!.value.aspectRatio,
-                  child: VideoPlayer(_videoController!),
-                ),
+              Column(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      AspectRatio(
+                        aspectRatio: _videoController!.value.aspectRatio,
+                        child: VideoPlayer(_videoController!),
+                      ),
+                      // Play/Pause ခလုတ်
+                      IconButton(
+                        icon: Icon(
+                          _videoController!.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _videoController!.value.isPlaying 
+                              ? _videoController!.pause() 
+                              : _videoController!.play();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // ဒေါင်းလုဒ် ခလုတ်
+                  ElevatedButton.icon(
+                    onPressed: _downloadVideo,
+                    icon: const Icon(Icons.download, color: Colors.white),
+                    label: const Text("Download Video", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
+                  ),
+                ],
               )
             else if (_videoUrl != null)
               Container(
