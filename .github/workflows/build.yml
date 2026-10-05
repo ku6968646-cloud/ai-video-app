@@ -16,9 +16,22 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.19.0'
-      - run: flutter create .  # 🌟 ဒီလိုင်းက အရေးကြီးဆုံးပါ (android folder ကို ဖန်တီးပေးပါမယ်)
+          
+      # မူရင်းဖိုင်များကို ယာယီသိမ်းဆည်းခြင်း
+      - run: mv pubspec.yaml pubspec.yaml.bak
+      - run: mv lib/main.dart lib/main.dart.bak
+      
+      # Flutter Project ကို ဖန်တီးခြင်း (android folder ရလာမည်)
+      - run: flutter create --project-name ai_video_app .
+      
+      # မူရင်းဖိုင်များကို ပြန်လည်ထည့်သွင်းခြင်း
+      - run: mv pubspec.yaml.bak pubspec.yaml
+      - run: mv lib/main.dart.bak lib/main.dart
+      
+      # Dependencies များရယူပြီး APK ထုတ်ခြင်း
       - run: flutter pub get
       - run: flutter build apk --release
+      
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
