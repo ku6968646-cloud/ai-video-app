@@ -17,26 +17,83 @@ jobs:
         with:
           flutter-version: '3.19.0'
           
-      # မူရင်းဖိုင်များကို ယာယီသိမ်းဆည်းခြင်း
       - run: mv pubspec.yaml pubspec.yaml.bak
       - run: mv lib/main.dart lib/main.dart.bak
-      
-      # Flutter Project ကို ဖန်တီးခြင်း
       - run: flutter create --project-name ai_video_app .
-      
-      # မူရင်းဖိုင်များကို ပြန်လည်ထည့်သွင်းခြင်း
       - run: mv pubspec.yaml.bak pubspec.yaml
       - run: mv lib/main.dart.bak lib/main.dart
       
-      # 🌟 Gradle ဖိုင်များကို ပြင်ဆင်ခြင်း (SDK Version များ တိုက်ရိုက်သတ်မှတ်ခြင်း)
-      - name: Patch Gradle Files
+      # 🌟 build.gradle ဖိုင်ကို အသစ် အစားထိုးခြင်း (ဒီနည်းလမ်းက အသေချာဆုံးပါ)
+      - name: Overwrite build.gradle
         run: |
-          sed -i 's/flutter.compileSdkVersion/34/g' android/app/build.gradle
-          sed -i 's/flutter.minSdkVersion/21/g' android/app/build.gradle
-          sed -i 's/flutter.targetSdkVersion/34/g' android/app/build.gradle
-          sed -i 's/flutter.ndkVersion/"25.1.8937393"/g' android/app/build.gradle
-          
-      # Android Manifest ကို ပြင်ဆင်ခြင်း (Internet နဲ့ Storage Permission)
+          cat > android/app/build.gradle << 'EOF'
+          def localProperties = new Properties()
+          def localPropertiesFile = rootProject.file('local.properties')
+          if (localPropertiesFile.exists()) {
+              localPropertiesFile.withReader('UTF-8') { reader ->
+                  localProperties.load(reader)
+              }
+          }
+
+          def flutterRoot = localProperties.getProperty('flutter.sdk')
+          def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+          if (flutterVersionCode == null) {
+              flutterVersionCode = '1'
+          }
+          def flutterVersionName = localProperties.getProperty('flutter.versionName')
+          if (flutterVersionName == null) {
+              flutterVersionName = '1.0'
+          }
+
+          apply plugin: 'com.android.application'
+          apply plugin: 'kotlin-android'
+          apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+
+          android {
+              namespace "com.example.ai_video_app"
+              compileSdkVersion 34
+              ndkVersion "25.1.8937393"
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+
+              sourceSets {
+                  main.java.srcDirs += 'src/main/kotlin'
+              }
+
+              defaultConfig {
+                  applicationId "com.example.ai_video_app"
+                  minSdkVersion 21
+                  targetSdkVersion 34
+                  versionCode flutterVersionCode.toInteger()
+                  versionName flutterVersionName
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+          }
+
+          flutter {
+              source '../..'
+          }
+
+          dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+          }
+          EOF
+      
+      # Android Manifest ကို ပြင်ဆင်ခြင်း
       - name: Patch AndroidManifest.xml
         run: |
           sed -i 's/<application/<application android:usesCleartextTraffic="true" android:requestLegacyExternalStorage="true"/g' android/app/src/main/AndroidManifest.xml
