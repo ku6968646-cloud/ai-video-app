@@ -40,8 +40,46 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _videoUrl;
   VideoPlayerController? _videoController;
 
+  // 🌟 Loading Dialog ကို ပြသည့် Function
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // အပြင်ကို နှိပ်လည်း မပိတ်ရဘူး
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.grey[900],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: Colors.orange),
+                const SizedBox(height: 20),
+                const Text(
+                  "Generating Video...",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "AI က ဗီဒီယိုကို ထုတ်လုပ်နေပါတယ်။\n၁ မိနစ်ကနေ ၅ မိနစ်အထိ ကြာနိုင်ပါတယ်။\nခဏစောင့်ပေးပါ။",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _generateVideo() async {
     setState(() { _isLoading = true; });
+    
+    // Loading Popup ကို ဖွင့်လိုက်ပါ
+    _showLoadingDialog();
+
     try {
       final response = await http.post(
         Uri.parse('http://127.0.0.1:8000/generate_video'), 
@@ -51,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
           "resolution": _selectedResolution,
           "duration": 5
         }),
-      );
+      ).timeout(const Duration(minutes: 6)); // ၆ မိနစ်အထိ စောင့်မယ်
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -65,11 +103,23 @@ class _HomeScreenState extends State<HomeScreen> {
         _videoController!.play();
         
         setState(() { _videoUrl = videoUrl; });
+        
+        // Loading Popup ကို ပိတ်လိုက်ပါ
+        if (mounted) Navigator.of(context).pop();
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Video Generated!")),
+          const SnackBar(content: Text("Video Generated! 🎉")),
+        );
+      } else {
+        // Error တက်ရင် Popup ပိတ်
+        if (mounted) Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Server Error: ${response.statusCode}")),
         );
       }
     } catch (e) {
+      // Error တက်ရင် Popup ပိတ်
+      if (mounted) Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -79,32 +129,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _downloadVideo() async {
-  if (_videoUrl == null) return;
+    if (_videoUrl == null) return;
 
-  try {
-    // Downloads Folder ကို ရယူခြင်း
-    Directory? dir = await getDownloadsDirectory();
-    if (dir == null) {
-      dir = await getExternalStorageDirectory();
+    try {
+      Directory? dir = await getDownloadsDirectory();
+      if (dir == null) {
+        dir = await getExternalStorageDirectory();
+      }
+      
+      String savePath = '${dir!.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Downloading...")),
+      );
+
+      await Dio().download(_videoUrl!, savePath);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Downloaded to: $savePath")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Download failed: $e")),
+      );
     }
-    
-    String savePath = '${dir!.path}/ai_video_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Downloading...")),
-    );
-
-    await Dio().download(_videoUrl!, savePath);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Downloaded to: $savePath")),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Download failed: $e")),
-    );
   }
-}
 
   @override
   void dispose() {
@@ -198,7 +247,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                         child: _isLoading 
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            )
                           : const Text("Create | AD", style: TextStyle(color: Colors.white)),
                       ),
                     ],
